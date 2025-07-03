@@ -3,18 +3,19 @@ import { CreateQuestion, GetQuestions, UpdateQuestion, ValidateAnswer } from "..
 import { generateQuestions } from "../../controller/generateq.controller"
 import { Authenticate } from "../../middleware/auth.middleware";
 import multer from "multer";
+import { authorizeAdmin } from "../../middleware/authorizeAdmin.middleware";
 
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 const router = Router();
 
-// router.use(Authenticate)
-router.post("/createquestion", upload.single('file'), CreateQuestion);
-router.patch("/updatequestion/:id", upload.single('file'), UpdateQuestion);
+router.use(Authenticate)
+router.post("/createquestion", authorizeAdmin, upload.single('file'), CreateQuestion);
+router.patch("/updatequestion/:id", authorizeAdmin, upload.single('file'), UpdateQuestion);
 router.post("/validateanswer/:id", ValidateAnswer);
 router.get("/getquestions", GetQuestions);
-router.post("/aiassist", generateQuestions)
+router.post("/aiassist", authorizeAdmin, generateQuestions)
 
 
 export default router;
