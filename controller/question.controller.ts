@@ -10,11 +10,9 @@ interface MulterRequest extends Request {
 }
 export const CreateQuestion = async (req: Request, res: Response): Promise<void> => {
     try {
-
-        // const { question, options, correctAnswer, explanation, VideoSolutionUrl, subject, type, tags } = req.body;
         const payload = req.body.questions || req.body;
         console.log("Payload received:", payload);
-        const multerrequest = req as MulterRequest
+        const multerrequest = req as MulterRequest;
 
         const questionList = Array.isArray(payload) ? payload : [payload];
         const createdQuestions = [];
@@ -31,64 +29,75 @@ export const CreateQuestion = async (req: Request, res: Response): Promise<void>
                 tags
             } = q;
 
-
-            const resultImage = await streamUpload(multerrequest.file.buffer, "questionImages");
-            // Basic validation for required fields
-            if (!question || !options || !correctAnswer || !explanation || !subject || !type) {
-                res.status(400).json({ error: "Missing required fields: question, options, correctAnswer, explanation, subject, type." });
-                return; // Important to return after sending response
+            // ✅ Upload image only if file exists
+            let resultImageUrl = null;
+            if (multerrequest.file && multerrequest.file.buffer) {
+                const resultImage = await streamUpload(multerrequest.file.buffer, "questionImages");
+                resultImageUrl = resultImage.secure_url;
             }
 
+            // ✅ Validate required fields
+            if (!question || !options || !correctAnswer || !explanation || !subject || !type) {
+                res.status(400).json({
+                    error: "Missing required fields: question, options, correctAnswer, explanation, subject, type."
+                });
+                return;
+            }
 
-
+            // ✅ Parse options
             let parsedOptions: any;
-
             try {
                 parsedOptions = typeof options === "string" ? JSON.parse(options) : options;
             } catch (err) {
                 res.status(400).json({ error: "Invalid options format." });
-                return
+                return;
             }
 
             let optionArray: string[];
-
             if (Array.isArray(parsedOptions)) {
                 optionArray = parsedOptions;
             } else if (typeof parsedOptions === 'object') {
                 optionArray = Object.values(parsedOptions);
             } else {
                 res.status(400).json({ error: "Options must be an array or object with string values." });
-                return
+                return;
+            }
+
+            if (optionArray.length < 2) {
+                res.status(400).json({ error: "At least two options are required." });
+                return;
             }
 
             if (!optionArray.includes(correctAnswer)) {
-                console.log(optionArray)
                 res.status(400).json({ error: "Correct answer must be one of the provided options." });
-                return
+                return;
             }
 
-
-            // Create the new question document
+            // ✅ Create the question
             const newQuestion = await Question.create({
                 question,
                 options: optionArray,
-                questionImage: resultImage.secure_url,
+                questionImage: resultImageUrl || null,
                 correctAnswer,
                 explanation,
-                VideoSolutionUrl,
+                VideoSolutionUrl: VideoSolutionUrl || null,
                 subject,
-                type, // Use the new 'type' field
-                tags: tags || [], // Default to empty array if tags are not provided
+                type,
+                tags: tags || [],
             });
 
-            res.status(201).json({ message: "Question created successfully", question: newQuestion });
+            createdQuestions.push(newQuestion);
         }
+
+        // ✅ Send response once after all questions are created
+        res.status(201).json({
+            message: `${createdQuestions.length} question(s) created successfully`,
+            questions: createdQuestions
+        });
+
     } catch (error: any) {
-        console.log("Error creating question:", error); // Use console.error for errors
-        // Mongoose validation errors
-
+        console.log("Error creating question:", error);
         res.status(500).json({ error: error.message });
-
     }
 };
 
