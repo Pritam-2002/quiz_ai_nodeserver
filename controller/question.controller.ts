@@ -13,6 +13,7 @@ export const CreateQuestion = async (req: Request, res: Response): Promise<void>
 
         // const { question, options, correctAnswer, explanation, VideoSolutionUrl, subject, type, tags } = req.body;
         const payload = req.body.questions || req.body;
+        console.log("Payload received:", payload);
         const multerrequest = req as MulterRequest
 
         const questionList = Array.isArray(payload) ? payload : [payload];
