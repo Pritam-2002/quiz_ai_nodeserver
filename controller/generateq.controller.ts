@@ -4,54 +4,55 @@ dotenv.config();
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 if (!geminiApiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is not set.");
+  throw new Error("GEMINI_API_KEY environment variable is not set.");
 }
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 
 export const generateQuestions = async (req: any, res: any) => {
-    const { topic, numQuestions } = req.body;
+  const { topic, numQuestions } = req.body;
 
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const prompt = `
+    const prompt = `
 Generate ${numQuestions} high-quality multiple-choice questions on the topic "${topic}".
-Each question must include:
 
-- A "question" string
-- An array of 4 "options"
-- A "correctAnswer" that exactly matches one of the options
-- An "explanation" string that justifies the correct answer
+Each question object must include the following keys:
+- "question": A clear and concise question string.
+- "options": An array of exactly 4 possible answers (strings).
+- "correctAnswer": One of the options, exactly matching one of the entries in the "options" array.
+- "explanation": A brief explanation that justifies why the answer is correct.
+- "subject": Use "${topic}" as the subject.
+- "tags": Include relevant keywords or concepts from the topic "${topic}" as an array of strings.
 
-Return the response as a JSON array in the following format:
+Format your response as a pure JSON array like below (no markdown, no extra commentary):
 
 [
   {
     "question": "What is the capital of France?",
     "options": ["Paris", "Berlin", "Rome", "Madrid"],
     "correctAnswer": "Paris",
-    "explanation": "Paris is the capital city of France."
+    "explanation": "Paris is the capital city of France.",
+    "subject": "Geography",
+    "tags": ["France", "capital", "Europe"]
   },
   ...
 ]
-
-Make sure:
-- There are no markdown characters
-- The format is valid JSON
 `;
 
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
 
-        const jsonStart = text.indexOf("[");
-        const jsonEnd = text.lastIndexOf("]") + 1;
-        const jsonString = text.slice(jsonStart, jsonEnd);
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-        const questions = JSON.parse(jsonString);
-        res.json({ questions });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to generate questions." });
-    }
+    const jsonStart = text.indexOf("[");
+    const jsonEnd = text.lastIndexOf("]") + 1;
+    const jsonString = text.slice(jsonStart, jsonEnd);
+
+    const questions = JSON.parse(jsonString);
+    res.json({ questions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate questions." });
+  }
 };

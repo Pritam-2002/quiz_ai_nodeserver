@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { CreateQuestion, GetQuestions, UpdateQuestion, ValidateAnswer } from "../../controller/question.controller";
+import { CreateQuestion, GetQuestions, UpdateQuestion, ValidateAnswers } from "../../controller/question.controller";
 import { generateQuestions } from "../../controller/generateq.controller"
 import { Authenticate } from "../../middleware/auth.middleware";
 import multer from "multer";
@@ -13,7 +13,7 @@ const router = Router();
 router.use(Authenticate)
 router.post("/createquestion", authorizeAdmin, upload.single('file'), CreateQuestion);
 router.patch("/updatequestion/:id", authorizeAdmin, upload.single('file'), UpdateQuestion);
-router.post("/validateanswer/:id", ValidateAnswer);
+router.post("/validateanswer", ValidateAnswers);
 router.get("/getquestions", GetQuestions);
 router.post("/aiassist", authorizeAdmin, generateQuestions)
 

@@ -158,38 +158,56 @@ export const UpdateQuestion = async (req: Request, res: Response): Promise<void>
     }
 };
 
-export const ValidateAnswer = async (req: Request, res: Response): Promise<void> => {
+export const ValidateAnswers = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { id } = req.params;
-        const { userAnswer } = req.body;
+        const { answers } = req.body;
 
-        if (!userAnswer) {
-            res.status(400).json({ error: "userAnswer is required in the request body." });
+        if (!Array.isArray(answers) || answers.length === 0) {
+            res.status(400).json({ error: "Answers array is required in the request body." });
             return;
         }
 
-        const question = await Question.findById(id);
+        const responseList = await Promise.all(
+            answers.map(async (item) => {
+                const { questionId, userAnswer } = item;
 
-        if (!question) {
-            res.status(404).json({ error: "Question not found." });
-            return;
-        }
+                if (!questionId || userAnswer === undefined) {
+                    return {
+                        questionId,
+                        error: "Missing questionId or userAnswer",
+                    };
+                }
 
-        const isCorrect = question.correctAnswer === userAnswer;
+                const question = await Question.findById(questionId);
 
-        res.status(200).json({
-            questionId: id,
-            isCorrect,
+                if (!question) {
+                    return {
+                        questionId,
+                        error: "Question not found",
+                    };
+                }
 
-            explanation: question.explanation,
-            VideoSolutionUrl: question.VideoSolutionUrl,
-            correctAnswer: isCorrect ? undefined : question.correctAnswer, // Optional: Only return correct answer if wrong
-            message: isCorrect ? "Correct answer!" : "Incorrect answer.",
-        });
+                const isCorrect = question.correctAnswer === userAnswer;
+
+                return {
+                    questionId,
+                    question: question.question,              // ✅ add this
+                    options: question.options,
+                    isCorrect,
+                    userAnswer,
+                    explanation: question.explanation,
+                    videoSolutionUrl: question.VideoSolutionUrl,
+                    correctAnswer: isCorrect ? undefined : question.correctAnswer,
+                    message: isCorrect ? "Correct answer!" : "Incorrect answer.",
+                };
+            })
+        );
+
+        res.status(200).json({ results: responseList });
 
     } catch (error: any) {
-        console.error("Error validating answer:", error);
-        res.status(500).json({ error: "Failed to validate answer: " + error.message });
+        console.error("Error validating answers:", error);
+        res.status(500).json({ error: "Failed to validate answers: " + error.message });
     }
 };
 
